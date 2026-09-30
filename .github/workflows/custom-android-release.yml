@@ -162,6 +162,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Install and verify required Android SDK and NDK
+        run: bash .github/scripts/setup_android_sdk.sh
       - name: Merge per-architecture libraries
         working-directory: core
         run: |
