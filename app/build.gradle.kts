@@ -57,6 +57,11 @@ fun getVersionProps(propName: String): String {
     return ""
 }
 
+val customAndroidRelease = System.getenv("CUSTOM_ANDROID_RELEASE") == "true"
+fun requiredCustomEnv(name: String): String =
+    System.getenv(name)?.takeIf { it.isNotBlank() }
+        ?: error("Missing required custom release setting: $name")
+
 android {
     namespace = "io.nekohasekai.sfa"
     compileSdk = 37
@@ -73,19 +78,34 @@ android {
 
     defaultConfig {
         applicationId = "io.nekohasekai.sfa"
+        buildConfigField("boolean", "CUSTOM_RELEASE", customAndroidRelease.toString())
         minSdk = 24
         targetSdk = 37
-        versionCode = getVersionProps("VERSION_CODE").toInt()
-        versionName = getVersionProps("VERSION_NAME")
+        versionCode = if (customAndroidRelease) {
+            requiredCustomEnv("CUSTOM_VERSION_CODE").toInt().also {
+                require(it in 1..2100000000) { "Invalid Android versionCode" }
+            }
+        } else getVersionProps("VERSION_CODE").toInt()
+        versionName = if (customAndroidRelease) {
+            requiredCustomEnv("CUSTOM_VERSION_NAME")
+        } else getVersionProps("VERSION_NAME")
         base.archivesName.set("SFA-${versionName}")
     }
 
     signingConfigs {
         create("release") {
-            storeFile = file("release.keystore")
-            storePassword = getProps("KEYSTORE_PASS")
-            keyAlias = getProps("ALIAS_NAME")
-            keyPassword = getProps("ALIAS_PASS")
+            if (customAndroidRelease) {
+                storeFile = file(requiredCustomEnv("ANDROID_KEYSTORE_PATH"))
+                storeType = "PKCS12"
+                storePassword = requiredCustomEnv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = requiredCustomEnv("ANDROID_KEY_ALIAS")
+                keyPassword = requiredCustomEnv("ANDROID_KEY_PASSWORD")
+            } else {
+                storeFile = file("release.keystore")
+                storePassword = getProps("KEYSTORE_PASS")
+                keyAlias = getProps("ALIAS_NAME")
+                keyPassword = getProps("ALIAS_PASS")
+            }
         }
     }
 

@@ -14,7 +14,11 @@ import java.io.Closeable
 
 class GitHubUpdateChecker : Closeable {
     companion object {
-        private const val RELEASES_URL = "https://api.github.com/repos/SagerNet/sing-box/releases"
+        private val RELEASES_URL = if (BuildConfig.CUSTOM_RELEASE) {
+            "https://api.github.com/repos/csbxd/sing-box-for-android/releases"
+        } else {
+            "https://api.github.com/repos/SagerNet/sing-box/releases"
+        }
         private const val METADATA_FILENAME = "SFA-version-metadata.json"
     }
 
@@ -44,6 +48,9 @@ class GitHubUpdateChecker : Closeable {
             UpdateTrack.STABLE -> listOf(json.decodeFromString<GitHubRelease>(content))
             UpdateTrack.BETA -> json.decodeFromString<List<GitHubRelease>>(content)
         }
+        if (BuildConfig.CUSTOM_RELEASE) {
+            return checkCustomUpdate(releases)
+        }
         val release = releases.filter { !it.draft }.reduceOrNull { best, candidate ->
             if (Libbox.compareSemver(candidate.version, best.version)) candidate else best
         } ?: return null
@@ -67,6 +74,31 @@ class GitHubUpdateChecker : Closeable {
             releaseNotes = release.body,
             isPrerelease = release.prerelease,
             fileSize = apkAsset?.size ?: 0,
+        )
+    }
+
+    private fun checkCustomUpdate(releases: List<GitHubRelease>): UpdateInfo? {
+        // Custom cN versions are ordered by the persisted Android versionCode.
+        // The upstream semver helper does not distinguish alpha.N.c1 from alpha.N.c2.
+        val (release, metadata) = releases.filter { !it.draft }.mapNotNull { release ->
+            downloadMetadata(release)?.let { release to it }
+        }.maxByOrNull { it.second.versionCode } ?: return null
+        if (metadata.versionCode <= BuildConfig.VERSION_CODE) return null
+        val isLegacy = Build.VERSION.SDK_INT < Build.VERSION_CODES.N
+        val apk = release.assets.find { asset ->
+            asset.name.endsWith(".apk") &&
+                asset.name.contains("universal") &&
+                !asset.name.contains("play") &&
+                asset.name.contains("legacy-android-5") == isLegacy
+        } ?: return null
+        return UpdateInfo(
+            versionCode = metadata.versionCode,
+            versionName = release.version,
+            downloadUrl = apk.browserDownloadUrl,
+            releaseUrl = release.htmlUrl,
+            releaseNotes = release.body,
+            isPrerelease = release.prerelease,
+            fileSize = apk.size,
         )
     }
 
