@@ -1,0 +1,207 @@
+name: Custom signed Android release
+
+on:
+  push:
+    branches: [dev]
+    paths: ['.github/custom-release/request.json']
+  workflow_dispatch:
+    inputs:
+      core_commit:
+        description: Exact 40-character commit on csbxd/sing-box custom-dev
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: custom-android-release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: github.repository == 'csbxd/sing-box-for-android' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-24.04
+    outputs:
+      skip: ${{ steps.plan.outputs.skip }}
+      tag: ${{ steps.plan.outputs.tag }}
+      version: ${{ steps.plan.outputs.version }}
+      version_code: ${{ steps.plan.outputs.version_code }}
+      prerelease: ${{ steps.plan.outputs.prerelease }}
+      core_commit: ${{ steps.plan.outputs.core_commit }}
+      app_commit: ${{ steps.plan.outputs.app_commit }}
+      go_version: ${{ steps.plan.outputs.go_version }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check planner tests and resolve exact inputs
+        id: request
+        env:
+          CORE_COMMIT: ${{ inputs.core_commit }}
+        run: |
+          python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
+          python3 .github/scripts/read_release_request.py
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          repository: csbxd/sing-box
+          ref: custom-dev
+          path: core
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out and plan exact source
+        id: plan
+        env:
+          CORE_COMMIT: ${{ steps.request.outputs.core_commit }}
+          APP_COMMIT: ${{ steps.request.outputs.app_commit }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git checkout --detach "$APP_COMMIT"
+          git -C core cat-file -e "$CORE_COMMIT^{commit}"
+          git -C core merge-base --is-ancestor "$CORE_COMMIT" origin/custom-dev
+          git -C core checkout --detach "$CORE_COMMIT"
+          python3 .github/scripts/plan_android_release.py --core core --core-sha "$CORE_COMMIT"
+      - name: Require owner-configured signing material before expensive builds
+        if: steps.plan.outputs.skip != 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+        run: |
+          for setting in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD ANDROID_SIGNING_CERT_SHA256; do
+            [[ -n "${!setting}" ]] || { echo "Missing $setting. Follow docs/custom-android-release.md"; exit 1; }
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          name: android-release-plan
+          path: release-plan.json
+          if-no-files-found: error
+      - name: Explain unchanged source
+        if: steps.plan.outputs.skip == 'true'
+        run: echo 'This exact Android + core source tree was already published; no new build, tag, or release.' >> "$GITHUB_STEP_SUMMARY"
+
+  library:
+    needs: plan
+    if: needs.plan.outputs.skip != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: true
+      matrix:
+        arch: ['386', amd64, arm, arm64]
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          repository: csbxd/sing-box
+          ref: ${{ needs.plan.outputs.core_commit }}
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: ${{ needs.plan.outputs.go_version }}
+          cache: false
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779 # v1
+        id: ndk
+        with:
+          ndk-version: r28
+      - name: Build release libraries for exact custom core
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+          SING_BOX_BUILD_VERSION: ${{ needs.plan.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          # Require explicit version support; never silently embed an upstream version.
+          grep -q 'SING_BOX_BUILD_VERSION' cmd/internal/build_shared/tag.go
+          make lib_install
+          export PATH="$PATH:$(go env GOPATH)/bin"
+          go run ./cmd/internal/build_libbox -target android -platform "android/$ARCH"
+          mkdir -p "dist/$ARCH"
+          mv libbox.aar libbox-legacy.aar "dist/$ARCH/"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: custom-libbox-${{ matrix.arch }}
+          path: dist
+          if-no-files-found: error
+          compression-level: 0
+
+  apk:
+    needs: [plan, library]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          ref: ${{ needs.plan.outputs.app_commit }}
+          persist-credentials: false
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          repository: csbxd/sing-box
+          ref: ${{ needs.plan.outputs.core_commit }}
+          path: core
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: android-release-plan
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: custom-libbox-*
+          path: libbox-inputs
+          merge-multiple: true
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: ${{ needs.plan.outputs.go_version }}
+          cache: false
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Merge per-architecture libraries
+        working-directory: core
+        run: |
+          mkdir -p ../app/libs
+          go run ./cmd/internal/merge_aar -output ../app/libs/libbox.aar ../libbox-inputs/*/libbox.aar
+          go run ./cmd/internal/merge_aar -output ../app/libs/libbox-legacy.aar ../libbox-inputs/*/libbox-legacy.aar
+      - name: Build and verify signed release APKs
+        env:
+          CUSTOM_ANDROID_RELEASE: 'true'
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/custom-android-release.p12
+          CUSTOM_VERSION_NAME: ${{ needs.plan.outputs.version }}
+          CUSTOM_VERSION_CODE: ${{ needs.plan.outputs.version_code }}
+        run: bash .github/scripts/build_signed_apks.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: signed-custom-apks
+          path: dist
+          if-no-files-found: error
+          compression-level: 0
+
+  publish:
+    needs: [plan, apk]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: signed-custom-apks
+          path: dist
+      - name: Publish verified artifacts without replacing a tag or release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_APP_COMMIT: ${{ needs.plan.outputs.app_commit }}
+        run: python3 .github/scripts/publish_android_release.py
