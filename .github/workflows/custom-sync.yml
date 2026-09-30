@@ -1,0 +1,30 @@
+name: Synchronize reviewed Android branches
+on:
+  push:
+    branches: [maintenance/custom-sync]
+    paths: ['.github/custom-sync/request.json']
+permissions:
+  contents: write
+concurrency:
+  group: reviewed-android-branch-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    if: github.repository == 'csbxd/sing-box-for-android' && github.ref == 'refs/heads/maintenance/custom-sync'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          fetch-depth: 0
+      - name: Test reviewed synchronization controls
+        run: python3 -m unittest discover -s .github/custom-sync -p 'test_*.py' -v
+      - name: Prepare, audit, back up and synchronize
+        run: python3 .github/custom-sync/sync.py
+      - name: Save audit result
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-sync-audit
+          path: sync-result.json
+          if-no-files-found: warn
