@@ -135,6 +135,10 @@ jobs:
     needs: [plan, library]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    outputs:
+      artifact_id: ${{ steps.apk_artifact.outputs.artifact-id }}
+      artifact_digest: ${{ steps.apk_artifact.outputs.artifact-digest }}
+      certificate_sha256: ${{ steps.build.outputs.certificate_sha256 }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         with:
@@ -170,7 +174,8 @@ jobs:
           mkdir -p ../app/libs
           go run ./cmd/internal/merge_aar -output ../app/libs/libbox.aar ../libbox-inputs/*/libbox.aar
           go run ./cmd/internal/merge_aar -output ../app/libs/libbox-legacy.aar ../libbox-inputs/*/libbox-legacy.aar
-      - name: Build and verify signed release APKs
+      - name: Build signed release APKs
+        id: build
         env:
           CUSTOM_ANDROID_RELEASE: 'true'
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -182,6 +187,58 @@ jobs:
           CUSTOM_VERSION_NAME: ${{ needs.plan.outputs.version }}
           CUSTOM_VERSION_CODE: ${{ needs.plan.outputs.version_code }}
         run: bash .github/scripts/build_signed_apks.sh
+      - name: Preserve immutable APK-only build output
+        id: apk_artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-apk-build-output
+          path: built-apks/*.apk
+          if-no-files-found: error
+          compression-level: 0
+
+  verify:
+    needs: [plan, apk]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          ref: ${{ needs.plan.outputs.app_commit }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: android-release-plan
+      - name: Verify immutable artifact identity and source run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_ARTIFACT_ID: ${{ needs.apk.outputs.artifact_id }}
+          BUILD_ARTIFACT_SHA256: ${{ needs.apk.outputs.artifact_digest }}
+        run: |
+          [[ "$BUILD_ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$BUILD_ARTIFACT_ID" > artifact-provenance.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$BUILD_ARTIFACT_ID/zip" > apk-build-output.zip
+          python3 .github/scripts/verify_artifact_provenance.py
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install official verification tools
+        run: |
+          test -f "$ANDROID_HOME/licenses/android-sdk-license"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'build-tools;37.0.0' < /dev/null
+          test -x "$ANDROID_HOME/build-tools/37.0.0/apksigner"
+          test -x "$ANDROID_HOME/build-tools/37.0.0/aapt"
+      - name: Verify every APK before release packaging
+        env:
+          ANDROID_SIGNING_CERT_SHA256: ${{ needs.apk.outputs.certificate_sha256 }}
+          CUSTOM_VERSION_NAME: ${{ needs.plan.outputs.version }}
+          CUSTOM_VERSION_CODE: ${{ needs.plan.outputs.version_code }}
+          BUILD_ARTIFACT_ID: ${{ needs.apk.outputs.artifact_id }}
+          BUILD_ARTIFACT_SHA256: ${{ needs.apk.outputs.artifact_digest }}
+        run: bash .github/scripts/verify_signed_apks.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: signed-custom-apks
@@ -190,7 +247,7 @@ jobs:
           compression-level: 0
 
   publish:
-    needs: [plan, apk]
+    needs: [plan, verify]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
