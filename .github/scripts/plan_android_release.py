@@ -97,9 +97,10 @@ def source_version(changelog):
 
 
 def source_digest(repo, ref="HEAD"):
-    # Both repositories accept the same connector-only trigger path.
+    # Connector-only release and validation requests are not application source.
     entries = "\n".join(line for line in git(repo, "ls-tree", "-r", ref).splitlines()
-                        if line.split("\t", 1)[1] != ".github/custom-release/request.json")
+                        if line.split("\t", 1)[1] not in {".github/custom-release/request.json",
+                                                        ".github/custom-validation/request.json"})
     return hashlib.sha256(entries.encode()).hexdigest()
 
 
