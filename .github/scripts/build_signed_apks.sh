@@ -17,7 +17,7 @@ actual_cert=$(keytool -exportcert -keystore "$ANDROID_KEYSTORE_PATH" -storetype 
 [[ "$actual_cert" == "$expected_cert" ]] || { echo 'Keystore certificate does not match the pinned public fingerprint'; exit 1; }
 # Never use a debug task or the upstream checked-in keystore for custom publication.
 ./gradlew --no-daemon :app:assembleOtherRelease :app:assembleOtherLegacyRelease
-build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+build_tools="$ANDROID_HOME/build-tools/37.0.0"
 [[ -x "$build_tools/apksigner" && -x "$build_tools/aapt" ]]
 mkdir -p dist
 shopt -s nullglob
