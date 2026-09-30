@@ -73,9 +73,9 @@ def source_version(changelog):
     raise ValueError("No source version heading found in exact core docs/changelog.md")
 
 
-def source_digest(repo):
+def source_digest(repo, ref="HEAD"):
     # Both repositories accept the same connector-only trigger path.
-    entries = "\n".join(line for line in git(repo, "ls-tree", "-r", "HEAD").splitlines()
+    entries = "\n".join(line for line in git(repo, "ls-tree", "-r", ref).splitlines()
                         if line.split("\t", 1)[1] != ".github/custom-release/request.json")
     return hashlib.sha256(entries.encode()).hexdigest()
 
