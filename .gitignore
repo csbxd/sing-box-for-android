@@ -13,3 +13,12 @@ local.properties
 /service-account-credentials.json
 /CLAUDE.md
 /.claude/
+# Local custom-release working files (never commit signing material).
+/release-plan.json
+/release-notes.md
+/libbox-inputs/
+/core/
+/dist/
+__pycache__/
+*.p12
+*.jks
