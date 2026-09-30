@@ -22,6 +22,7 @@ REPLAYS = {
         '8ee8b9cbc8446d8c64ff52113d02b3f7e2be0061',
         '7fcc66c3b88fd697482d6d67b1ae7551c513bc89',
         'a7f3056184247f1aabb849a6456d575c7f064b1f',
+        '98c704bd6f8f52b9e7b4583361b09d097aad1dab',
     ],
     'main': [], 'stable': [], 'wip': [],
 }
