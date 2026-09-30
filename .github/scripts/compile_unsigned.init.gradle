@@ -1,0 +1,27 @@
+// CI-only: compile real release variants without reading or creating a signing key.
+if (System.getenv('CUSTOM_ANDROID_COMPILE_CHECK') != 'true' ||
+        System.getenv('CUSTOM_ANDROID_RELEASE') == 'true') {
+    throw new GradleException('This init script requires isolated compile-check mode')
+}
+gradle.beforeProject { project ->
+    project.pluginManager.withPlugin('com.android.application') {
+        project.extensions.getByName('androidComponents').finalizeDsl { android ->
+            android.defaultConfig.versionName = System.getenv('CUSTOM_COMPILE_VERSION_NAME')
+            android.defaultConfig.versionCode = Integer.parseInt(System.getenv('CUSTOM_COMPILE_VERSION_CODE'))
+            android.defaultConfig.buildConfigField('boolean', 'CUSTOM_RELEASE', 'true')
+            android.buildTypes.configureEach {
+                signingConfig = null
+            }
+        }
+    }
+}
+gradle.taskGraph.whenReady { graph ->
+    if (graph.allTasks.any { task ->
+        task.name.toLowerCase().contains('debug') ||
+        task.name.toLowerCase().contains('sign') ||
+        task.name.toLowerCase().contains('publish') ||
+        task.name.toLowerCase().contains('upload')
+    }) {
+        throw new GradleException('Signing, debug, upload and publish tasks are forbidden in compile-only CI')
+    }
+}

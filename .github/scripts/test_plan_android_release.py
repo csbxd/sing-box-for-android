@@ -87,6 +87,10 @@ class PlannerTests(unittest.TestCase):
             request.parent.mkdir(parents=True); request.write_text('{}')
             git('add', '.'); git('commit', '-qm', 'request')
             self.assertEqual(source_digest(root), original)
+            validation = Path(root, '.github/custom-validation/request.json')
+            validation.parent.mkdir(parents=True); validation.write_text('{}')
+            git('add', '.'); git('commit', '-qm', 'validation request')
+            self.assertEqual(source_digest(root), original)
             Path(root, 'source').write_text('changed source'); git('commit', '-qam', 'real change')
             self.assertNotEqual(source_digest(root), original)
 
