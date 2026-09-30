@@ -24,6 +24,15 @@ class APKValidationTests(unittest.TestCase):
                           self.signature + self.signature.replace('#1', '#2')):
             with self.assertRaises(ValueError): self.check(signature=signature)
 
+    def test_observed_build_tools_37_scheme_labels(self):
+        for scheme in ('V1', 'V2', 'V3.0'):
+            self.check(signature=self.signature.replace('Signer #1', scheme + ' Signer:'))
+        self.check(signature=('Number of signers: 1\n'
+                             + f'V3.1 Signer: (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: {self.cert}\n'
+                             + f'V3.0 Signer: (minSdkVersion=28, maxSdkVersion=32) certificate SHA-256 digest: {self.cert}'))
+        with self.assertRaises(ValueError):
+            self.check(signature=self.signature.replace('Signer #1', 'V2 Signer #2:'))
+
     def test_v31_sdk_range_labels_and_repeated_same_identity(self):
         signature = 'Number of signers: 1\n' + '\n'.join(
             f'Signer (minSdkVersion={lo}, maxSdkVersion={hi}) certificate SHA-256 digest: {self.cert}'

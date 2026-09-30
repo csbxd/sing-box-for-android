@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 import re
 import subprocess
+import sys
 
 
 def signing_digests(signature):
@@ -12,16 +13,19 @@ def signing_digests(signature):
               if line.startswith('Number of signers: ')]
     if counts != ['1']:
         raise ValueError('APK must have exactly one signer; reported counts: ' + repr(counts))
-    # Official apksigner uses SDK-range labels for APK Signature Scheme v3.1,
-    # potentially printing the same certificate once for each supported range.
-    # Source Stamp Signer is intentionally not an APK signing identity.
-    label = r'(#[1-9]\d*|\(minSdkVersion=\d+(?: \(dev release=true\))?, maxSdkVersion=\d+\))'
-    pattern = re.compile(r'^Signer ' + label + r' certificate SHA-256 digest: ([0-9a-fA-F]{64})$')
+    # Build Tools 37 was reproduced with Google's exact SDK binary and public
+    # signed APKs: it emits "V2 Signer:" / "V3.0 Signer:" / SDK-ranged labels.
+    sdk_range = r'\(minSdkVersion=\d+(?: \(dev release=true\))?, maxSdkVersion=\d+\)'
+    legacy = re.compile(r'^Signer (#[1-9]\d*|' + sdk_range + r') certificate SHA-256 digest: ([0-9a-fA-F]{64})$')
+    current = re.compile(r'^(V(?:1|2|3\.[012]) Signer(?: #[1-9]\d*)?:)(?: ' + sdk_range + r')? certificate SHA-256 digest: ([0-9a-fA-F]{64})$')
     identities, digests = [], []
     for line in lines:
-        if not line.startswith('Signer ') or ' certificate SHA-256 digest:' not in line:
+        if ' certificate SHA-256 digest:' not in line:
             continue
-        match = pattern.fullmatch(line)
+        # Source-stamp certificates are not APK signing identities.
+        if line.startswith(('Source Stamp Signer certificate ', 'Source Stamp Signer: certificate ')):
+            continue
+        match = legacy.fullmatch(line) or current.fullmatch(line)
         if not match:
             raise ValueError('Unrecognized APK signer certificate output; refusing to guess')
         identities.append(match[1])
@@ -31,6 +35,8 @@ def signing_digests(signature):
     indexed = [identity for identity in identities if identity.startswith('#')]
     if indexed and (indexed != ['#1'] or len(identities) != 1):
         raise ValueError('Unexpected additional or mixed APK signer identities')
+    if any(re.search(r'#(?!1(?:$|:))', identity) for identity in identities):
+        raise ValueError('Unexpected additional indexed APK signer')
     return digests
 
 
@@ -60,11 +66,14 @@ def main():
     parser.add_argument('--version', required=True)
     parser.add_argument('--code', type=int, required=True)
     args = parser.parse_args()
-    signature = subprocess.check_output([str(args.build_tools / 'apksigner'), 'verify', '--verbose',
-                                         '--print-certs', args.apk], text=True)
-    for line in signature.splitlines():
-        if line.startswith('Number of signers: ') or (line.startswith('Signer ') and ' certificate SHA-256 digest:' in line):
-            print(line, flush=True)  # Public certificate metadata only; never key/password data.
+    result = subprocess.run([str(args.build_tools / 'apksigner'), 'verify', '--verbose',
+                             '--print-certs', args.apk], capture_output=True, text=True)
+    # This command reads only the APK: its complete stdout/stderr contain public
+    # certificate/verification information, never keystore or password material.
+    print(result.stdout, end="", flush=True)
+    print(result.stderr, end="", file=sys.stderr, flush=True)
+    result.check_returncode()
+    signature = result.stdout
     print('Expected signing certificate SHA-256: ' + args.certificate, flush=True)
     badging = subprocess.check_output([str(args.build_tools / 'aapt'), 'dump', 'badging', args.apk], text=True)
     validate(signature, badging, args.certificate, args.version, args.code)
