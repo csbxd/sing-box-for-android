@@ -5,7 +5,9 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 from plan_android_release import releases, markers
+from check_release_freshness import refresh_and_check
 
 
 def gh(*args, **kwargs):
@@ -50,6 +52,17 @@ This fork is signed with its owner's key. Back up profiles before replacing an a
 {marker}
 """
     Path("release-notes.md").write_text(body)
+    core_dir = tempfile.TemporaryDirectory(prefix="android-release-core-")
+    try:
+        publish(plan, repo, apks, core_dir.name)
+    finally:
+        core_dir.cleanup()
+
+
+def publish(plan, repo, apks, core_dir):
+    # Refresh immediately before each external publication transition. A stale
+    # run may leave its existing draft/tag for inspection, but never overwrites it.
+    refresh_and_check(plan, Path.cwd(), core_dir, os.environ["GITHUB_SHA"])
     # POST is create-only. A collision fails even if another actor just created the tag.
     gh("api", "--method", "POST", f"repos/{repo}/git/refs", "-f", "ref=refs/tags/" + plan["tag"],
        "-f", "sha=" + plan["app_commit"])
@@ -58,8 +71,10 @@ This fork is signed with its owner's key. Back up profiles before replacing an a
     if plan["prerelease"]:
         args.append("--prerelease")
     args += [str(p) for p in apks] + ["dist/SFA-version-metadata.json", "dist/release-plan.json", "dist/SHA256SUMS"]
+    refresh_and_check(plan, Path.cwd(), core_dir, os.environ["GITHUB_SHA"])
     gh(*args)
     # Failed uploads leave a draft and reserved metadata for inspection, never replacement.
+    refresh_and_check(plan, Path.cwd(), core_dir, os.environ["GITHUB_SHA"])
     gh("release", "edit", plan["tag"], "--repo", repo, "--draft=false",
        "--latest=" + ("false" if plan["prerelease"] else "true"))
     gh("release", "view", plan["tag"], "--repo", repo, "--json", "url,isDraft,tagName")
