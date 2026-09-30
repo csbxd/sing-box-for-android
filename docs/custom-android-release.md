@@ -78,6 +78,7 @@ python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
 python3 -m py_compile .github/scripts/*.py
 bash -n .github/scripts/build_signed_apks.sh
 bash -n .github/scripts/setup_android_signing.sh
+bash -n .github/scripts/setup_android_sdk.sh
 ```
 
-A real signed build needs the owner-configured secrets, Android SDK/NDK, Go version from `version.properties`, JDK 17, and network access to the repository's existing dependencies. A planner/static test pass is not an APK build pass. All APK signature/version checks run again before upload. Dependencies and SDK coordinates are inherited from the existing Android/core repositories; incompatibilities fail without publishing unsigned output.
+A real signed build needs the owner-configured secrets, Go version from `version.properties`, JDK 17, and network access to the repository's existing dependencies. The APK job explicitly installs and verifies `platforms;android-37.1`, `ndk;28.0.13004108`, and `build-tools;37.0.0` through Google's official `sdkmanager`; library jobs use NDK r28. Package coordinates were checked against [Google's SDK repository metadata](https://dl.google.com/android/repository/repository2-3.xml). The GitHub-hosted runner must supply its standard command-line tools and already-accepted Android SDK license; the workflow does not auto-accept a new license. Missing tools/license/packages fail closed. A planner/static test pass is not an APK build pass. All APK signature/version checks run again before upload. Dependencies and SDK coordinates are inherited from the existing Android/core repositories; incompatibilities fail without publishing unsigned output.
