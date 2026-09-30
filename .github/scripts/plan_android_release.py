@@ -2,11 +2,14 @@
 """Plan immutable Android releases from GitHub Releases and exact source trees."""
 import argparse
 import hashlib
+import http.client
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
+import time
+import urllib.error
 import urllib.request
 
 BASE_RE = re.compile(r"^v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$")
@@ -19,18 +22,36 @@ def git(repo, *args):
     return subprocess.check_output(["git", "-C", str(repo), *args], text=True).strip()
 
 
+def release_page(request):
+    """Retry one read-only page at most four times; never advance its cursor."""
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as error:
+            # Permission failures, rate limits and bad queries require attention,
+            # not repeated requests. Only server-side 5xx errors are retried.
+            if not 500 <= error.code < 600 or attempt == 3:
+                raise
+        except (urllib.error.URLError, TimeoutError, ConnectionError,
+                http.client.IncompleteRead, json.JSONDecodeError):
+            if attempt == 3:
+                raise
+        time.sleep(2 ** (attempt + 1))
+
+
 def releases(repository):
     """GraphQL avoids downloading every large release's complete asset list."""
     owner, name = repository.split("/")
     query = """query($owner:String!,$name:String!,$after:String) {
       repository(owner:$owner,name:$name) {
-        releases(first:100,after:$after,orderBy:{field:CREATED_AT,direction:DESC}) {
+        releases(first:10,after:$after,orderBy:{field:CREATED_AT,direction:DESC}) {
           nodes { tagName isPrerelease isDraft publishedAt description tagCommit { oid } }
           pageInfo { hasNextPage endCursor }
         }
       }
     }"""
-    result, after = [], None
+    result, after, cursors = [], None, set()
     while True:
         request = urllib.request.Request(
             "https://api.github.com/graphql",
@@ -38,8 +59,7 @@ def releases(repository):
                 "owner": owner, "name": name, "after": after}}).encode(),
             headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"],
                      "Content-Type": "application/json", "User-Agent": "custom-android-release"})
-        with urllib.request.urlopen(request, timeout=120) as response:
-            payload = json.load(response)
+        payload = release_page(request)
         if payload.get("errors"):
             raise RuntimeError(str(payload["errors"]))
         page = payload["data"]["repository"]["releases"]
@@ -47,6 +67,9 @@ def releases(repository):
         if not page["pageInfo"]["hasNextPage"]:
             return result
         after = page["pageInfo"]["endCursor"]
+        if not after or after in cursors:
+            raise RuntimeError("GitHub returned a missing/repeated release cursor")
+        cursors.add(after)
 
 
 def version_key(tag):
