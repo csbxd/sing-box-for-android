@@ -4,15 +4,17 @@
     "dev": {
       "branch": "dev",
       "upstream_sha": "8e42c63c4771de10b20dd2562704850c604518d8",
-      "source_sha": "c40cc0e6d4bb8fcf44e3515d578910f44bddd355",
-      "source_tree": "b84465eb4643620fb550f300e7a2e0c481a38ae4",
-      "source_fingerprint": "28266e10f1ea2f17cfe3c9a16aac8745a8df26798bd2cd3143dba4686335f089",
+      "source_sha": "7fcc66c3b88fd697482d6d67b1ae7551c513bc89",
+      "source_tree": "d34859b479f00c6f81143689dea0ffe1ff564ad3",
+      "source_fingerprint": "0ce65141dfb8fda2ac9fe17621ca432067eb7d5284e2f3d41313137e18e411ac",
       "replay_commits": [
         "53dbcb48629f87de56ec3240436ae96f62745c19",
         "42dcd74a65f02b1fb99b5a6fe171067041355bf0",
         "354af9618526fae96314d03bd4edb83da97e76fe",
         "f82d2c96aecbd70c73061d8b8d0a43334e1a4532",
-        "c40cc0e6d4bb8fcf44e3515d578910f44bddd355"
+        "c40cc0e6d4bb8fcf44e3515d578910f44bddd355",
+        "8ee8b9cbc8446d8c64ff52113d02b3f7e2be0061",
+        "7fcc66c3b88fd697482d6d67b1ae7551c513bc89"
       ],
       "bootstrap": true,
       "mapping": [
@@ -49,6 +51,20 @@
           "cherry_pick": "c40cc0e6d4bb8fcf44e3515d578910f44bddd355",
           "patch_id": "147a9423692f3d691eb4f1d16f827ec56aeae03a",
           "metadata_sha256": "f4baae9dfbd9bde215424e787a3e789c4b474eb302a1cdeb808c9792d3def9d5",
+          "metadata_preserved": true
+        },
+        {
+          "original": "8ee8b9cbc8446d8c64ff52113d02b3f7e2be0061",
+          "cherry_pick": "8ee8b9cbc8446d8c64ff52113d02b3f7e2be0061",
+          "patch_id": "8921cdb1b28f58c7349a2d733a1dbb946158d988",
+          "metadata_sha256": "da809dfa2ac0226cdfadd7ad3b66f283acfb6ea20f523e0e8bd41a60012e3b64",
+          "metadata_preserved": true
+        },
+        {
+          "original": "7fcc66c3b88fd697482d6d67b1ae7551c513bc89",
+          "cherry_pick": "7fcc66c3b88fd697482d6d67b1ae7551c513bc89",
+          "patch_id": "ec7a7640fc1a8b7710dc70f7798d76d4cb6b902a",
+          "metadata_sha256": "f519c13994216f157951465caa82a70c531aaed999efe89ab218101a21b8cba1",
           "metadata_preserved": true
         }
       ]

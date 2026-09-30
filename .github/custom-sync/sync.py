@@ -19,6 +19,8 @@ REPLAYS = {
         '354af9618526fae96314d03bd4edb83da97e76fe',
         'f82d2c96aecbd70c73061d8b8d0a43334e1a4532',
         'c40cc0e6d4bb8fcf44e3515d578910f44bddd355',
+        '8ee8b9cbc8446d8c64ff52113d02b3f7e2be0061',
+        '7fcc66c3b88fd697482d6d67b1ae7551c513bc89',
     ],
     'main': [], 'stable': [], 'wip': [],
 }
