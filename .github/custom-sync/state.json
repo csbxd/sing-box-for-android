@@ -3,10 +3,12 @@
   "branches": {
     "dev": {
       "branch": "dev",
-      "upstream_sha": "8e42c63c4771de10b20dd2562704850c604518d8",
-      "source_sha": "98c704bd6f8f52b9e7b4583361b09d097aad1dab",
-      "source_tree": "d5f763349a8b5718fbe75dde99cfb282943cd639",
-      "source_fingerprint": "bdc62b45988818d6566a6eee3882cb09bad9d352de64591e45a65ad2e03a83da",
+      "skip": false,
+      "upstream_sha": "5c7b4ce969b926063737d059edf7b256c8f56ed0",
+      "previous_head": "5f8be174a4ac4afbe34c340bc97cc5446aedf50b",
+      "source_sha": "770a77e076976f571b066e0570c23e9f3954b8b1",
+      "source_tree": "a24aaf32d5be501f6332f5f7ae4b3548d9a9e43b",
+      "source_fingerprint": "df2b2d6617689cd35d449ec6feaa167685cd7cda55aae7af1d157cd9eca71081",
       "replay_commits": [
         "53dbcb48629f87de56ec3240436ae96f62745c19",
         "42dcd74a65f02b1fb99b5a6fe171067041355bf0",
@@ -18,82 +20,84 @@
         "a7f3056184247f1aabb849a6456d575c7f064b1f",
         "98c704bd6f8f52b9e7b4583361b09d097aad1dab"
       ],
-      "bootstrap": true,
       "mapping": [
         {
           "original": "53dbcb48629f87de56ec3240436ae96f62745c19",
-          "cherry_pick": "53dbcb48629f87de56ec3240436ae96f62745c19",
+          "cherry_pick": "844dcd9b3c4ffac9b1a223f1685c6f8781871338",
           "patch_id": "6e9cb1c1617264c4e92761c456e203842677b086",
           "metadata_sha256": "092199b117116317a04b5337dfabc025eade65edfacb71975d8601001881a0c9",
           "metadata_preserved": true
         },
         {
           "original": "42dcd74a65f02b1fb99b5a6fe171067041355bf0",
-          "cherry_pick": "42dcd74a65f02b1fb99b5a6fe171067041355bf0",
+          "cherry_pick": "96338d307906ec9fdd7894adc5d8171cdca12eb7",
           "patch_id": "90b671fcfd7b3b63a060da964cef5a725f275adc",
           "metadata_sha256": "1a018532cfae7a78b9ed29165dc68ed7ea5031aca889845029aacc23b940da7e",
           "metadata_preserved": true
         },
         {
           "original": "354af9618526fae96314d03bd4edb83da97e76fe",
-          "cherry_pick": "354af9618526fae96314d03bd4edb83da97e76fe",
+          "cherry_pick": "eddb8f9d0c4a5de18617a1954bec7a7fd333d98d",
           "patch_id": "73edf49b2888d76bbb834190594529cfb62f30db",
           "metadata_sha256": "c65fa4415039ce9fcd658accb235a31548ce3fde8ccb6b04b2513b5e31ee43f1",
           "metadata_preserved": true
         },
         {
           "original": "f82d2c96aecbd70c73061d8b8d0a43334e1a4532",
-          "cherry_pick": "f82d2c96aecbd70c73061d8b8d0a43334e1a4532",
+          "cherry_pick": "51ee34c329297ade73312742b57cfba1bdb4c5ef",
           "patch_id": "e7d416150425fc2cdd1d70a7830f38e67e1198dc",
           "metadata_sha256": "3d3abe33e4fd3c5263046b4f7a044ab8e44d20b0397fbb843a9417416cb1ece8",
           "metadata_preserved": true
         },
         {
           "original": "c40cc0e6d4bb8fcf44e3515d578910f44bddd355",
-          "cherry_pick": "c40cc0e6d4bb8fcf44e3515d578910f44bddd355",
+          "cherry_pick": "3455fde5269c66618065be771b5fbac2160bb63f",
           "patch_id": "147a9423692f3d691eb4f1d16f827ec56aeae03a",
           "metadata_sha256": "f4baae9dfbd9bde215424e787a3e789c4b474eb302a1cdeb808c9792d3def9d5",
           "metadata_preserved": true
         },
         {
           "original": "8ee8b9cbc8446d8c64ff52113d02b3f7e2be0061",
-          "cherry_pick": "8ee8b9cbc8446d8c64ff52113d02b3f7e2be0061",
+          "cherry_pick": "2e1d4b924b03dd57f3d106bc22bb4962e8c98101",
           "patch_id": "8921cdb1b28f58c7349a2d733a1dbb946158d988",
           "metadata_sha256": "da809dfa2ac0226cdfadd7ad3b66f283acfb6ea20f523e0e8bd41a60012e3b64",
           "metadata_preserved": true
         },
         {
           "original": "7fcc66c3b88fd697482d6d67b1ae7551c513bc89",
-          "cherry_pick": "7fcc66c3b88fd697482d6d67b1ae7551c513bc89",
+          "cherry_pick": "9bf87da9e2e186d199b556f44899e695528291af",
           "patch_id": "ec7a7640fc1a8b7710dc70f7798d76d4cb6b902a",
           "metadata_sha256": "f519c13994216f157951465caa82a70c531aaed999efe89ab218101a21b8cba1",
           "metadata_preserved": true
         },
         {
           "original": "a7f3056184247f1aabb849a6456d575c7f064b1f",
-          "cherry_pick": "a7f3056184247f1aabb849a6456d575c7f064b1f",
+          "cherry_pick": "d1a275c250e2218ae6bb9d0a57287a52df213a75",
           "patch_id": "f693d0c6c998bedae0c658eabefd2018f0b7e801",
           "metadata_sha256": "71b1561ffaf58539a6bf2fb831704c59b3884b4ee870a008570371c0e3360848",
           "metadata_preserved": true
         },
         {
           "original": "98c704bd6f8f52b9e7b4583361b09d097aad1dab",
-          "cherry_pick": "98c704bd6f8f52b9e7b4583361b09d097aad1dab",
+          "cherry_pick": "770a77e076976f571b066e0570c23e9f3954b8b1",
           "patch_id": "f03947d8ca1bd422836c33aab93ca639bd81033f",
           "metadata_sha256": "fabd223fa8cf6d4ccee4942cb9a8cdee046f53484e43258287f81dfccdfd55a3",
           "metadata_preserved": true
         }
-      ]
+      ],
+      "backup_branch": "backup/sync-dev-weekly-20261005-0854-reviewed-android"
     },
     "main": {
       "branch": "main",
-      "upstream_sha": "5cb7414524b851259e6d8f76193176a58b8004ee",
-      "source_sha": "5cb7414524b851259e6d8f76193176a58b8004ee",
-      "source_tree": "fe35d215af43d4a9df57cc7af4098628bade0b61",
-      "source_fingerprint": "14f5a61979be49f059a49d5ad6dace95c8d611aff3ca47f1ef7a8cde2ffb7db3",
+      "skip": false,
+      "upstream_sha": "49fc144a1201b4d16e8a825a7a01e2b08d7a4eec",
+      "previous_head": "5cb7414524b851259e6d8f76193176a58b8004ee",
+      "source_sha": "49fc144a1201b4d16e8a825a7a01e2b08d7a4eec",
+      "source_tree": "65253dbe14869e6d2701f1affba0e6be98c07afb",
+      "source_fingerprint": "726f71d0d6b2ab88f80897a716e6a11194265005328d00bcafe2470bcd458cec",
       "replay_commits": [],
-      "bootstrap": true,
-      "mapping": []
+      "mapping": [],
+      "backup_branch": "backup/sync-main-weekly-20261005-0854-reviewed-android"
     },
     "stable": {
       "branch": "stable",
