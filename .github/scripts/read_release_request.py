@@ -23,11 +23,16 @@ def resolve(event, workflow_sha, manual_core, request=None):
 
 def main():
     event = os.environ['GITHUB_EVENT_NAME']
-    request = json.loads(Path('.github/custom-release/request.json').read_text()) if event == 'push' else None
+    request_path = Path('.github/custom-release/request.json')
+    if event == 'push' and not request_path.exists():
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+            output.write('skip=true\n')
+        return
+    request = json.loads(request_path.read_text()) if event == 'push' else None
     app, core = resolve(event, os.environ['GITHUB_SHA'], os.environ.get('CORE_COMMIT', ''), request)
     subprocess.run(['git', 'merge-base', '--is-ancestor', app, os.environ['GITHUB_SHA']], check=True)
     with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-        output.write(f'app_commit={app}\ncore_commit={core}\n')
+        output.write(f'skip=false\napp_commit={app}\ncore_commit={core}\n')
 
 
 if __name__ == '__main__':
