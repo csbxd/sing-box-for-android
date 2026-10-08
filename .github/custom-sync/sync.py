@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Reviewed Android branch synchronization using real cherry-picks and leases."""
+import argparse
 import hashlib
 import json
 import os
@@ -23,6 +24,7 @@ REPLAYS = {
         '7fcc66c3b88fd697482d6d67b1ae7551c513bc89',
         'a7f3056184247f1aabb849a6456d575c7f064b1f',
         '98c704bd6f8f52b9e7b4583361b09d097aad1dab',
+        'd30d0f363ca11abba42ebd71a92eabc7b34bd62b',
     ],
     'main': [], 'stable': [], 'wip': [],
 }
@@ -108,7 +110,9 @@ def ensure_request_current(request, workflow_sha):
 
 
 def validate_source(expected, state, branch):
-    if state['replay_commits'] != REPLAYS[branch]:
+    recorded = state['replay_commits']
+    reviewed = REPLAYS[branch]
+    if not isinstance(recorded, list) or reviewed[:len(recorded)] != recorded:
         raise RuntimeError('Replay list changed without a reviewed state update: ' + branch)
     if fingerprint(expected) != state['source_fingerprint']:
         raise RuntimeError('Unexpected custom source changes; review before replay: ' + branch)
@@ -127,7 +131,7 @@ def prepare_target(target, state, work_root):
     git('fetch', '--no-tags', 'origin', expected, state['source_sha'], *REPLAYS[branch])
     git('fetch', '--no-tags', UPSTREAM, upstream)
     validate_source(expected, state, branch)
-    if state['upstream_sha'] == upstream:
+    if state['upstream_sha'] == upstream and state['replay_commits'] == REPLAYS[branch]:
         if target.get('expected_tree') and target['expected_tree'] != git('rev-parse', expected + '^{tree}'):
             raise RuntimeError('No-op tree differs from independently reviewed expectation')
         return {**state, 'branch': branch, 'skip': True, 'observed_head': expected}
@@ -158,11 +162,19 @@ def prepare_target(target, state, work_root):
             'replay_commits': REPLAYS[branch], 'mapping': mapping}
 
 
-def main():
+def main(prepare_only=False, request_path='.github/custom-sync/request.json'):
     if os.environ['GITHUB_REPOSITORY'] != REPO or os.environ['GITHUB_REF'] != 'refs/heads/' + CONTROL:
         raise RuntimeError('Wrong repository/control branch')
     workflow_sha = os.environ['GITHUB_SHA']
-    request = json.loads(Path('.github/custom-sync/request.json').read_text())
+    if not SHA.fullmatch(workflow_sha) or git('rev-parse', 'HEAD') != workflow_sha:
+        raise RuntimeError('Local control HEAD does not match exact workflow SHA')
+    if git('diff', '--name-only', 'HEAD', '--', '.github/custom-sync'):
+        raise RuntimeError('Control configuration has uncommitted changes')
+    if request_path not in ('.github/custom-sync/request.json', '.github/custom-sync/validation-request.json'):
+        raise RuntimeError('Unsupported audited request path')
+    if raw('git', 'show', workflow_sha + ':' + request_path) != Path(request_path).read_bytes():
+        raise RuntimeError('Request must match exact committed control input')
+    request = json.loads(Path(request_path).read_text())
     validate_request(request)
     state_path = Path('.github/custom-sync/state.json')
     state = json.loads(state_path.read_text())
@@ -178,17 +190,23 @@ def main():
     for result in changed:
         result['backup_branch'] = 'backup/sync-' + result['branch'] + '-' + request['request_id']
     audit = {'schema': 1, 'request_id': request['request_id'], 'control_commit': workflow_sha,
-             'repository': REPO, 'all_noop': not changed, 'branches': results}
+             'repository': REPO, 'all_noop': not changed, 'status': 'prepared', 'branches': results}
     Path('sync-result.json').write_text(json.dumps(audit, indent=2) + '\n')
     print(json.dumps(audit, indent=2))
+    if prepare_only:
+        ensure_request_current(request, workflow_sha)
+        audit["status"] = "validated-only"
+        Path("sync-result.json").write_text(json.dumps(audit, indent=2) + "\n")
+        return
     if not changed:
+        ensure_request_current(request, workflow_sha)
+        audit['status'] = 'verified-noop'
+        Path('sync-result.json').write_text(json.dumps(audit, indent=2) + '\n')
         print('All requested branches unchanged: no rewrite, backup, release or state commit')
         return
     ensure_request_current(request, workflow_sha)
-    # Empty-value leases make backup creation create-only, including races.
-    git('push', '--atomic', *['--force-with-lease=refs/heads/' + row['backup_branch'] + ':' for row in changed],
-        'origin', *[row['previous_head'] + ':refs/heads/' + row['backup_branch'] for row in changed])
-    ensure_request_current(request, workflow_sha)
+    if git('ls-remote', '--heads', 'origin', *['refs/heads/' + row['backup_branch'] for row in changed]):
+        raise RuntimeError('Backup ref already exists; use a fresh reviewed request ID')
     for row in changed:
         state['branches'][row['branch']] = row
     state_path.write_text(json.dumps(state, indent=2) + '\n')
@@ -197,19 +215,43 @@ def main():
     git('add', str(state_path))
     git('commit', '-m', 'Record verified Android branch synchronization')
     state_commit = git('rev-parse', 'HEAD')
+    if git('rev-list', '--parents', '-n', '1', state_commit).split() != [state_commit, workflow_sha]:
+        raise RuntimeError('State commit must have the exact control SHA as its only parent')
+    ensure_request_current(request, workflow_sha)
     # The source updates and state/control update form one Git transaction. A new
     # request or user source push causes its lease to reject the entire batch.
-    git('push', '--atomic', '--force-with-lease=refs/heads/' + CONTROL + ':' + workflow_sha,
-        *['--force-with-lease=refs/heads/' + row['branch'] + ':' + row['previous_head']
-          for row in changed], 'origin', 'HEAD:refs/heads/' + CONTROL,
-        *[row['source_sha'] + ':refs/heads/' + row['branch'] for row in changed])
-    verified = remote_heads('origin', [CONTROL] + [row['branch'] for row in changed])
+    audit['state_commit'] = state_commit
+    Path('sync-result.json').write_text(json.dumps(audit, indent=2) + '\n')
+    try:
+        git('push', '--atomic', '--force-with-lease=refs/heads/' + CONTROL + ':' + workflow_sha,
+            *['--force-with-lease=refs/heads/' + row['branch'] + ':' + row['previous_head']
+              for row in changed],
+            *['--force-with-lease=refs/heads/' + row['backup_branch'] + ':' for row in changed],
+            'origin', 'HEAD:refs/heads/' + CONTROL,
+            *[row['source_sha'] + ':refs/heads/' + row['branch'] for row in changed],
+            *[row['previous_head'] + ':refs/heads/' + row['backup_branch'] for row in changed])
+    except Exception:
+        audit['status'] = 'push_failed_inspect_remote'
+        Path('sync-result.json').write_text(json.dumps(audit, indent=2) + '\n')
+        raise
+    verified = remote_heads('origin', [CONTROL] + [row['branch'] for row in changed] + [row['backup_branch'] for row in changed])
     if verified[CONTROL] != state_commit:
         raise RuntimeError('Control branch changed after the atomic push; inspect audit/state')
     for row in changed:
         if verified[row['branch']] != row['source_sha']:
             raise RuntimeError('Source branch changed after the atomic push; inspect audit/state')
+        if verified[row['backup_branch']] != row['previous_head']:
+            raise RuntimeError('Backup branch changed after the atomic push; inspect audit/state')
+    for row in results:
+        if row['skip'] and remote_heads('origin', [row['branch']])[row['branch']] != row['observed_head']:
+            raise RuntimeError('No-op source changed during atomic push; inspect audit/state')
+    audit.update(status='verified-pushed', state_commit=state_commit)
+    Path('sync-result.json').write_text(json.dumps(audit, indent=2) + '\n')
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prepare-only", action="store_true", help="Prepare and audit without changing remote refs or control state")
+    parser.add_argument('--request-path', default='.github/custom-sync/request.json')
+    args = parser.parse_args()
+    main(prepare_only=args.prepare_only, request_path=args.request_path)

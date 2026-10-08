@@ -183,6 +183,96 @@ class LocalGitIntegrationTests(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError): sync.main()
         self.assertEqual(sync.remote_heads('origin', ['dev'])['dev'], self.custom)
         self.assertEqual(sync.remote_heads('origin', [sync.CONTROL])[sync.CONTROL], superseding)
+        self.assert_no_backups()
+
+    def assert_no_backups(self):
+        self.assertFalse(self.git(self.work, 'ls-remote', '--heads', 'origin', 'refs/heads/backup/*'))
+
+    def test_reviewed_replay_append_rebuilds_unchanged_upstream(self):
+        self.commit(self.work, 'ci.txt', 'reviewed CI protection', 'Reviewed CI append')
+        extra = self.git(self.work, 'rev-parse', 'HEAD')
+        self.git(self.work, 'checkout', '--detach', self.control)
+        with mock.patch.dict(sync.REPLAYS, {'dev': [self.custom, extra]}):
+            sync.main(prepare_only=True)
+        audit = json.loads(Path('sync-result.json').read_text())
+        self.assertFalse(audit['all_noop'])
+        self.assertEqual(audit['branches'][0]['replay_commits'], [self.custom, extra])
+        self.assertEqual(len(audit['branches'][0]['mapping']), 2)
+        self.assert_no_backups()
+
+    def test_replay_removal_and_reordering_rejected(self):
+        for replays in ([], [self.base, self.custom]):
+            with mock.patch.dict(sync.REPLAYS, {'dev': replays}):
+                with self.assertRaisesRegex(RuntimeError, 'Replay list changed'):
+                    sync.validate_source(self.custom, self.state['branches']['dev'], 'dev')
+
+    def test_prepare_only_does_not_commit_or_push(self):
+        self.advance_upstream()
+        before = Path('.github/custom-sync/state.json').read_bytes()
+        with mock.patch('sync.git', wraps=sync.git) as commands:
+            sync.main(prepare_only=True)
+        self.assertFalse(any(call.args[0] in ('push', 'commit') for call in commands.call_args_list))
+        self.assertEqual(Path('.github/custom-sync/state.json').read_bytes(), before)
+        self.assertEqual(self.git(self.work, 'rev-parse', 'HEAD'), self.control)
+        self.assert_no_backups()
+        self.assertEqual(json.loads(Path('sync-result.json').read_text())['status'], 'validated-only')
+
+    def test_success_uses_one_atomic_push_and_verified_audit(self):
+        self.advance_upstream()
+        with mock.patch('sync.git', wraps=sync.git) as commands:
+            sync.main()
+        pushes = [c.args for c in commands.call_args_list if c.args[0] == 'push']
+        self.assertEqual(len(pushes), 1)
+        push = pushes[0]
+        self.assertEqual(push[:2], ('push', '--atomic'))
+        self.assertIn('--force-with-lease=refs/heads/' + sync.CONTROL + ':' + self.control, push)
+        self.assertIn('--force-with-lease=refs/heads/dev:' + self.custom, push)
+        self.assertIn('--force-with-lease=refs/heads/backup/sync-dev-integration-test:', push)
+        audit = json.loads(Path('sync-result.json').read_text())
+        self.assertEqual(audit['status'], 'verified-pushed')
+        self.assertEqual(self.git(self.work, 'rev-parse', audit['state_commit'] + '^'), self.control)
+
+    def test_source_race_rejects_all_refs(self):
+        self.advance_upstream()
+        real_git = sync.git
+        tree = self.git(self.work, 'rev-parse', self.custom + '^{tree}')
+        newer = self.git(self.work, 'commit-tree', tree, '-p', self.custom, '-m', 'Concurrent user change')
+        def race(*args, **kwargs):
+            if args[:2] == ('push', '--atomic'):
+                self.git(self.work, 'push', '-q', 'origin', newer + ':refs/heads/dev')
+            return real_git(*args, **kwargs)
+        with mock.patch('sync.git', side_effect=race):
+            with self.assertRaises(subprocess.CalledProcessError): sync.main()
+        self.assert_no_backups()
+        self.assertEqual(sync.remote_heads('origin', [sync.CONTROL])[sync.CONTROL], self.control)
+        self.assertEqual(sync.remote_heads('origin', ['dev'])['dev'], newer)
+        self.assertEqual(json.loads(Path('sync-result.json').read_text())['status'], 'push_failed_inspect_remote')
+
+    def test_backup_creation_race_rejects_all_refs(self):
+        self.advance_upstream()
+        real_git = sync.git
+        backup = 'backup/sync-dev-integration-test'
+        def race(*args, **kwargs):
+            if args[:2] == ('push', '--atomic'):
+                self.git(self.work, 'push', '-q', 'origin', self.base + ':refs/heads/' + backup)
+            return real_git(*args, **kwargs)
+        with mock.patch('sync.git', side_effect=race):
+            with self.assertRaises(subprocess.CalledProcessError): sync.main()
+        heads = sync.remote_heads('origin', [sync.CONTROL, 'dev', backup])
+        self.assertEqual(heads, {sync.CONTROL: self.control, 'dev': self.custom, backup: self.base})
+
+    def test_existing_backup_even_same_sha_rejects_all_refs(self):
+        self.advance_upstream()
+        backup = 'backup/sync-dev-integration-test'
+        self.git(self.work, 'push', '-q', 'origin', self.custom + ':refs/heads/' + backup)
+        with self.assertRaisesRegex(RuntimeError, 'Backup ref already exists'): sync.main()
+        self.assertEqual(sync.remote_heads('origin', ['dev'])['dev'], self.custom)
+        self.assertEqual(sync.remote_heads('origin', [sync.CONTROL])[sync.CONTROL], self.control)
+
+    def test_wrong_local_control_head_rejected(self):
+        self.git(self.work, 'checkout', '--detach', self.custom)
+        with self.assertRaisesRegex(RuntimeError, 'Local control HEAD'): sync.main()
+        self.assert_no_backups()
 
     def test_conflict_does_not_mutate_source_or_create_backup(self):
         self.advance_upstream(conflict=True)

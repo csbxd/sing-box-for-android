@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "request_id": "asa-20261008-atomic-android",
+  "targets": [
+    {
+      "branch": "dev",
+      "expected_head": "770a77e076976f571b066e0570c23e9f3954b8b1",
+      "upstream_sha": "fa1913ee46eeaf8e2516e3fd389346ab5f182c9b",
+      "expected_tree": "96049b3f300b5e0e07659b1a95cece245dc6c460"
+    },
+    {
+      "branch": "main",
+      "expected_head": "49fc144a1201b4d16e8a825a7a01e2b08d7a4eec",
+      "upstream_sha": "be59b0bef8907ee4552e87e486504f45d1320efa",
+      "expected_tree": "72d7108cfa98544fc5d11bc60359143f84ccd3ff"
+    },
+    {
+      "branch": "stable",
+      "expected_head": "092aefd125420a9862a461093b6ce6be65b9afa6",
+      "upstream_sha": "092aefd125420a9862a461093b6ce6be65b9afa6",
+      "expected_tree": "3f440c23541bbaeb9dcf589b94b7a692e53d726b"
+    },
+    {
+      "branch": "wip",
+      "expected_head": "2ce3c747af032b48bd7696f31dd8856ac7f3f917",
+      "upstream_sha": "2ce3c747af032b48bd7696f31dd8856ac7f3f917",
+      "expected_tree": "4d682cd1af3011ad9cd8948e72eeb48a1463d6f9"
+    }
+  ]
+}

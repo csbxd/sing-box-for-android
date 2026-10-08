@@ -42,22 +42,31 @@ All commit values must be full lowercase 40-character SHA-1s. Request IDs allow 
 ## Safety and replay state
 
 - The request is restricted to this repository/control branch. Current target heads, upstream heads and the latest control commit must match the request before work and immediately before remote mutation.
-- `state.json` stores each branch's reviewed upstream/source commit, source tree, source fingerprint, original replay commit list, and original-to-replayed metadata/patch mapping. New custom code/CI commits require review and a corresponding replay-list/state update; knowing the new tip SHA is not permission to discard them.
+- `state.json` stores each branch's reviewed upstream/source commit, source tree, source fingerprint, original replay commit list, and original-to-replayed metadata/patch mapping. New custom code/CI commits require review and append-only additions to the replay list; the recorded list must remain its exact prefix, and appended commits force replay even when upstream is unchanged. State is updated only by the successful transaction; knowing the new tip SHA is not permission to discard them.
 - Only `.github/custom-release/request.json` and `.github/custom-validation/request.json` are excluded from source fingerprints. Intervening commits must modify only those request files. Empty commits, merge commits, history rewrites, reverted-but-unreviewed source changes, and other user changes stop the job.
 - Unchanged upstream plus unchanged reviewed source is a true no-op: no source rewrite, backup, tag, release, or state commit. Its audit includes `observed_head`, which may be a permitted request-only descendant of the stored source SHA.
 - When upstream changes, each branch starts at its exact reviewed upstream SHA in a separate worktree. Each custom commit is applied with actual `git cherry-pick`, preserving author name/email/date and the **full commit message**. Stable patch IDs and exact author/message metadata are compared. Conflicts, empty/absorbed patches, changed patch IDs, or unexpected trees fail closed; no automatic conflict resolution is performed.
-- All requested branches are prepared and audited before any source branch changes. Create-only backup refs are pushed first as an atomic batch. They are named `backup/sync-BRANCH-REQUEST_ID` and are never replaced or deleted.
-- Source updates and the per-branch state/control commit are then pushed in **one atomic Git transaction**, with explicit expected-head `--force-with-lease` checks for every source branch **and the control branch**. A concurrent user push or newer request rejects the whole source/state batch. Backups may remain when the later transaction fails; inspect them rather than reusing the request ID.
+- All requested branches are prepared and audited before any source branch changes. Create-only backup refs join the source/state atomic transaction. They are named `backup/sync-BRANCH-REQUEST_ID` and are never replaced or deleted.
+- Backup refs, source updates and the per-branch state/control commit are pushed in **one atomic Git transaction**, with explicit expected-head `--force-with-lease` checks for every source branch **and the control branch**. A concurrent user push or newer request rejects the entire backup/source/state batch. Every backup uses an empty-value create-only lease; an existing backup or concurrent creation rejects the whole batch. The local control HEAD must equal the exact request SHA, and the state commit must have that SHA as its only parent.
 - Upstream is a separate repository, so it cannot participate in that Git transaction. The guarantee is the exact reviewed upstream SHA, observed current at the final check. A later upstream advance is handled by the next fresh request.
-- The `android-sync-audit` artifact is a **candidate plan until the workflow succeeds and remote refs/state are verified**. Failure may occur before or after backup creation. Never treat a pre-push `source_sha`/`backup_branch` entry as proof of publication. After success, read current state and verify every changed target equals its stored source SHA. No-op targets instead must match their `observed_head` and reviewed fingerprint.
+- The `android-sync-audit` artifact is a **candidate plan until the workflow succeeds and remote refs/state are verified**. Its status is `prepared` until verification completes, then `verified-pushed` or `verified-noop`. Never treat a pre-push `source_sha`/`backup_branch` entry as proof of publication. After success, read current state and verify every changed target equals its stored source SHA and every backup equals its previous head. No-op targets instead must match their `observed_head` and reviewed fingerprint.
 
 A successful sync does not launch the APK workflow. GitHub's built-in token does not recursively trigger other push workflows, and the control route never submits a release request. If an APK build is later authorized, use the separate exact-source release flow after confirming signing setup and source freshness.
 
 ## Checks
 
 ```bash
+python3 .github/custom-sync/sync.py --prepare-only  # identical preparation/audit, no state commit or push
 python3 -m unittest discover -s .github/custom-sync -p 'test_*.py' -v
 python3 -m py_compile .github/custom-sync/*.py
 ```
 
 Tests use temporary local Git repositories and real cherry-picks/push leases. They do not generate keys or access private signing files. Keep custom source changes, CI changes, and this maintenance-control configuration as distinct commits.
+
+## Authorized local execution on 2026-10-08
+
+The owner authorized the asa local task for synchronization and release. The
+committed validation-request.json is an alternate audited input for local
+prepare-only and live execution via --request-path. It does not trigger the
+Actions synchronization request workflow, preventing duplicate concurrent
+execution. Source, backup and control updates retain all exact leases.
