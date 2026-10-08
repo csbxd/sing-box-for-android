@@ -23,7 +23,7 @@ jobs:
     if: github.repository == 'csbxd/sing-box-for-android' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-24.04
     outputs:
-      skip: ${{ steps.plan.outputs.skip }}
+      skip: ${{ steps.request.outputs.skip == 'true' && 'true' || steps.plan.outputs.skip }}
       tag: ${{ steps.plan.outputs.tag }}
       version: ${{ steps.plan.outputs.version }}
       version_code: ${{ steps.plan.outputs.version_code }}
@@ -44,6 +44,7 @@ jobs:
           python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
           python3 .github/scripts/read_release_request.py
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        if: steps.request.outputs.skip == 'false'
         with:
           repository: csbxd/sing-box
           ref: custom-dev
@@ -51,6 +52,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Check out and plan exact source
+        if: steps.request.outputs.skip == 'false'
         id: plan
         env:
           CORE_COMMIT: ${{ steps.request.outputs.core_commit }}
@@ -63,7 +65,7 @@ jobs:
           git -C core checkout --detach "$CORE_COMMIT"
           python3 .github/scripts/plan_android_release.py --core core --core-sha "$CORE_COMMIT"
       - name: Require owner-configured signing material before expensive builds
-        if: steps.plan.outputs.skip != 'true'
+        if: steps.request.outputs.skip == 'false' && steps.plan.outputs.skip == 'false'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -75,18 +77,21 @@ jobs:
             [[ -n "${!setting}" ]] || { echo "Missing $setting. Follow docs/custom-android-release.md"; exit 1; }
           done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: steps.plan.outputs.skip != 'true'
+        if: steps.request.outputs.skip == 'false' && steps.plan.outputs.skip == 'false'
         with:
           name: android-release-plan
           path: release-plan.json
           if-no-files-found: error
+      - name: Explain deleted request
+        if: steps.request.outputs.skip == 'true'
+        run: echo 'No release request; skip publication.' >> "$GITHUB_STEP_SUMMARY"
       - name: Explain unchanged source
         if: steps.plan.outputs.skip == 'true'
         run: echo 'This exact Android + core source tree was already published; no new build, tag, or release.' >> "$GITHUB_STEP_SUMMARY"
 
   library:
     needs: plan
-    if: needs.plan.outputs.skip != 'true'
+    if: needs.plan.outputs.skip == 'false'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     strategy:
