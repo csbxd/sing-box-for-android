@@ -29,7 +29,12 @@ def main():
             or os.environ["GITHUB_REPOSITORY"] != "csbxd/sing-box-for-android"
             or os.environ["GITHUB_REF"] != "refs/heads/dev"):
         raise ValueError("Compile checks run only from the expected dev push")
-    app, core, version = resolve(json.loads(Path(".github/custom-validation/request.json").read_text()))
+    request_path = Path(".github/custom-validation/request.json")
+    if not request_path.exists():
+        with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+            output.write("skip=true\n")
+        return
+    app, core, version = resolve(json.loads(request_path.read_text()))
     for repo, source, ancestor in ((".", app, os.environ["GITHUB_SHA"]),
                                    (".", app, "origin/dev"),
                                    ("core", core, "origin/custom-dev")):
@@ -46,7 +51,7 @@ def main():
     if not 1 <= code <= 2100000000:
         raise ValueError("Invalid compile-check Android version code")
     with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-        output.write(f"app_commit={app}\ncore_commit={core}\ncore_version={version}\ngo_version={go}\nversion_code={code}\n")
+        output.write(f"skip=false\napp_commit={app}\ncore_commit={core}\ncore_version={version}\ngo_version={go}\nversion_code={code}\n")
     with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
         summary.write(f"Compile-only validation\n\nAndroid: {app}\n\nCore: {core} ({version})\n\n"
                       "No signing secrets, APK upload, tag, or Release publication.\n")
