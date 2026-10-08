@@ -1,26 +1,30 @@
 {
   "schema": 1,
-  "request_id": "weekly-20261005-0854-reviewed-android",
+  "request_id": "20261008-sync-token-noop-android",
   "targets": [
     {
       "branch": "dev",
-      "expected_head": "5f8be174a4ac4afbe34c340bc97cc5446aedf50b",
-      "upstream_sha": "5c7b4ce969b926063737d059edf7b256c8f56ed0"
+      "expected_head": "0eb2a132939c1a1b68344ce2ea2360fb49721677",
+      "upstream_sha": "fa1913ee46eeaf8e2516e3fd389346ab5f182c9b",
+      "expected_tree": "050ac9b7a22bcb4eb077b227758cd22c7b3045a3"
     },
     {
       "branch": "main",
-      "expected_head": "5cb7414524b851259e6d8f76193176a58b8004ee",
-      "upstream_sha": "49fc144a1201b4d16e8a825a7a01e2b08d7a4eec"
+      "expected_head": "be59b0bef8907ee4552e87e486504f45d1320efa",
+      "upstream_sha": "be59b0bef8907ee4552e87e486504f45d1320efa",
+      "expected_tree": "72d7108cfa98544fc5d11bc60359143f84ccd3ff"
     },
     {
       "branch": "stable",
       "expected_head": "092aefd125420a9862a461093b6ce6be65b9afa6",
-      "upstream_sha": "092aefd125420a9862a461093b6ce6be65b9afa6"
+      "upstream_sha": "092aefd125420a9862a461093b6ce6be65b9afa6",
+      "expected_tree": "3f440c23541bbaeb9dcf589b94b7a692e53d726b"
     },
     {
       "branch": "wip",
       "expected_head": "2ce3c747af032b48bd7696f31dd8856ac7f3f917",
-      "upstream_sha": "2ce3c747af032b48bd7696f31dd8856ac7f3f917"
+      "upstream_sha": "2ce3c747af032b48bd7696f31dd8856ac7f3f917",
+      "expected_tree": "4d682cd1af3011ad9cd8948e72eeb48a1463d6f9"
     }
   ]
 }
