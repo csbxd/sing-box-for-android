@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 
 REPO = 'csbxd/sing-box-for-android'
 UPSTREAM = 'https://github.com/SagerNet/sing-box-for-android.git'
@@ -162,7 +163,60 @@ def prepare_target(target, state, work_root):
             'replay_commits': REPLAYS[branch], 'mapping': mapping}
 
 
+
+def take_push_token():
+    """Remove the owner-managed secret before any preparation child process."""
+    token = os.environ.pop('CUSTOM_SYNC_TOKEN', '')
+    if os.environ.get('CUSTOM_SYNC_REQUIRE_TOKEN') == '1' and not token:
+        raise RuntimeError('CUSTOM_SYNC_TOKEN is missing; refusing synchronization')
+    return token
+
+
+def atomic_push(token, *args):
+    """Authenticate only the final atomic push; never persist or log credentials."""
+    if not token:
+        if os.environ.get('CUSTOM_SYNC_REQUIRE_TOKEN') == '1':
+            raise RuntimeError('CUSTOM_SYNC_TOKEN is missing; refusing push')
+        # Credential-free temporary repository integration tests.
+        return git('push', *args)
+    expected_url = 'https://github.com/' + REPO
+    push_url = git('remote', 'get-url', '--push', '--all', 'origin')
+    if push_url not in (expected_url, expected_url + '.git'):
+        raise RuntimeError('Unexpected push destination; refusing credentials')
+    if not args or args[0] != '--atomic' or args.count('origin') != 1:
+        raise RuntimeError('Authenticated push must retain the atomic origin transaction')
+    # This file contains only environment lookups, never the secret itself.
+    askpass_source = """#!/usr/bin/env python3
+import os, sys
+url = os.environ["CUSTOM_SYNC_AUTH_URL"]
+prompt = sys.argv[1] if len(sys.argv) == 2 else ""
+if prompt == "Username for '" + url + "': ":
+    print("x-access-token")
+elif prompt == "Password for '" + url.replace("https://", "https://x-access-token@", 1) + "': ":
+    print(os.environ["CUSTOM_SYNC_TOKEN"])
+else:
+    sys.exit(1)
+"""
+    with tempfile.TemporaryDirectory(prefix='custom-sync-auth-') as directory:
+        askpass = Path(directory) / 'askpass.py'
+        askpass.write_text(askpass_source)
+        askpass.chmod(0o700)
+        # Disable inherited Git tracing/config injection for the credentialed child.
+        env = {key: value for key, value in os.environ.items()
+               if not key.startswith(('GIT_TRACE', 'GIT_CONFIG')) and key != 'GIT_CURL_VERBOSE'}
+        env.update(CUSTOM_SYNC_TOKEN=token, CUSTOM_SYNC_AUTH_URL=push_url,
+                   GIT_ASKPASS=str(askpass), GIT_TERMINAL_PROMPT='0',
+                   GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
+                   LC_ALL='C')
+        return subprocess.check_output([
+            'git', '-c', 'credential.helper=', '-c', 'credential.useHttpPath=true',
+            '-c', 'http.extraheader=', '-c', 'http.https://github.com/.extraheader=',
+            '-c', 'http.followRedirects=false', '-c', 'core.hooksPath=/dev/null',
+            'push', *args], env=env).decode().strip()
+
+
 def main(prepare_only=False, request_path='.github/custom-sync/request.json'):
+    token = take_push_token()
     if os.environ['GITHUB_REPOSITORY'] != REPO or os.environ['GITHUB_REF'] != 'refs/heads/' + CONTROL:
         raise RuntimeError('Wrong repository/control branch')
     workflow_sha = os.environ['GITHUB_SHA']
@@ -223,7 +277,7 @@ def main(prepare_only=False, request_path='.github/custom-sync/request.json'):
     audit['state_commit'] = state_commit
     Path('sync-result.json').write_text(json.dumps(audit, indent=2) + '\n')
     try:
-        git('push', '--atomic', '--force-with-lease=refs/heads/' + CONTROL + ':' + workflow_sha,
+        atomic_push(token, '--atomic', '--force-with-lease=refs/heads/' + CONTROL + ':' + workflow_sha,
             *['--force-with-lease=refs/heads/' + row['branch'] + ':' + row['previous_head']
               for row in changed],
             *['--force-with-lease=refs/heads/' + row['backup_branch'] + ':' for row in changed],
