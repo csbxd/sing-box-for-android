@@ -1,0 +1,32 @@
+name: Audit public Android release bytes
+on:
+  push:
+    branches: [maintenance/custom-sync]
+    paths: ['.github/custom-sync/public-android-audit-request.json']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: public-android-release-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    if: github.repository == 'csbxd/sing-box-for-android' && github.ref == 'refs/heads/maintenance/custom-sync'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify public bytes without signing or write credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -m py_compile .github/custom-sync/public_android_audit.py
+          python3 .github/custom-sync/public_android_audit.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-android-release-audit
+          path: public-android-audit-result.json
+          if-no-files-found: error
