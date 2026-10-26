@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "request_id": "weekly-20261026-android-alpha13-public-bytes",
+  "tag": "v1.15.0-alpha.13.c1",
+  "source_sha": "d6a056cf89a1f4f1b0ff7b9168345606bf7f0ee5",
+  "source_tree": "7666c1928a00d26d021e6f9aafada138b60db15a",
+  "core_sha": "82873c8ae156ea7fb91906e55d15f3b4053fb727",
+  "version_code": 748,
+  "certificate_sha256": "fba2a95f3dff8c2bcb729f9b13e294c7f337b394cc3b9266e901ca49f8a363ac"
+}
