@@ -1,16 +1,16 @@
 {
   "schema": 1,
-  "request_id": "weekly-20261026-0851-reviewed-android",
+  "request_id": "weekly-20261109-resumed-20261111-android",
   "targets": [
     {
       "branch": "dev",
-      "expected_head": "e382e264614c3252e7ba82e6958b8bf86ea05f40",
-      "upstream_sha": "a548a7903e96266a0046018562c73b192edbfc18"
+      "expected_head": "259ce16627b06087b94b5472c4c2f85496097c68",
+      "upstream_sha": "ab4fad3944bb49436fe38c088ec82acfd6e0f97c"
     },
     {
       "branch": "main",
-      "expected_head": "ae93152f21457723af77d144f28c1f7be7362aec",
-      "upstream_sha": "f87c2ebdb7e34754be751bb5e58926db2fed8f8c"
+      "expected_head": "f87c2ebdb7e34754be751bb5e58926db2fed8f8c",
+      "upstream_sha": "a9e27320e8bfda5bdeb586ca3e4e55c3b051b98c"
     },
     {
       "branch": "stable",
