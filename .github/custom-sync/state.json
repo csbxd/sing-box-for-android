@@ -4,11 +4,11 @@
     "dev": {
       "branch": "dev",
       "skip": false,
-      "upstream_sha": "ab4fad3944bb49436fe38c088ec82acfd6e0f97c",
-      "previous_head": "259ce16627b06087b94b5472c4c2f85496097c68",
-      "source_sha": "9c03cb78e245107a99193d5a9b74cc156c75bd26",
-      "source_tree": "1b405f031cb00557d0001a4c47018734b0b143a9",
-      "source_fingerprint": "bb821effaa87d9e98b45aece0dc56bac12551b780a759b66c5f894870f29121a",
+      "upstream_sha": "07376b13886242facaf4c5e1f642b432dda8be4a",
+      "previous_head": "7ea0f9325086882ef930d8717a920a4cb778195c",
+      "source_sha": "b6d5bb36e371db558db2d296e2ffafdd611312c7",
+      "source_tree": "763dc27db4a7e9b1b678baf1a4096ac29af12a0c",
+      "source_fingerprint": "57b436282e172514c47d32b7439d15bf9179b3f08b21017eabc0f7f0821fd924",
       "replay_commits": [
         "53dbcb48629f87de56ec3240436ae96f62745c19",
         "42dcd74a65f02b1fb99b5a6fe171067041355bf0",
@@ -24,88 +24,88 @@
       "mapping": [
         {
           "original": "53dbcb48629f87de56ec3240436ae96f62745c19",
-          "cherry_pick": "3e4d952f836e8a4d1cec86b765484abdbc88a069",
+          "cherry_pick": "6f876bcc29870b5118be01ec446fc758de3b6146",
           "patch_id": "6e9cb1c1617264c4e92761c456e203842677b086",
           "metadata_sha256": "092199b117116317a04b5337dfabc025eade65edfacb71975d8601001881a0c9",
           "metadata_preserved": true
         },
         {
           "original": "42dcd74a65f02b1fb99b5a6fe171067041355bf0",
-          "cherry_pick": "db4f31cf42fcab85fe22be378b8de4c2597a4357",
+          "cherry_pick": "c4e55f15e4df9aabc0bf96bce3f48d0d331a5c3d",
           "patch_id": "90b671fcfd7b3b63a060da964cef5a725f275adc",
           "metadata_sha256": "1a018532cfae7a78b9ed29165dc68ed7ea5031aca889845029aacc23b940da7e",
           "metadata_preserved": true
         },
         {
           "original": "354af9618526fae96314d03bd4edb83da97e76fe",
-          "cherry_pick": "300424678db972e936edbfbe9632905b37307815",
+          "cherry_pick": "f139aa34da9c0ee0c53924e76fcace1c8ee3e00f",
           "patch_id": "73edf49b2888d76bbb834190594529cfb62f30db",
           "metadata_sha256": "c65fa4415039ce9fcd658accb235a31548ce3fde8ccb6b04b2513b5e31ee43f1",
           "metadata_preserved": true
         },
         {
           "original": "f82d2c96aecbd70c73061d8b8d0a43334e1a4532",
-          "cherry_pick": "53e752c9845ed5be7ca8b5591b0fedf999224330",
+          "cherry_pick": "887346bc21dff2e79c770d8c4a5bbb28257359fe",
           "patch_id": "e7d416150425fc2cdd1d70a7830f38e67e1198dc",
           "metadata_sha256": "3d3abe33e4fd3c5263046b4f7a044ab8e44d20b0397fbb843a9417416cb1ece8",
           "metadata_preserved": true
         },
         {
           "original": "c40cc0e6d4bb8fcf44e3515d578910f44bddd355",
-          "cherry_pick": "8e40f94a2a9c0155dde68be5dca89f6bf93cf0ef",
+          "cherry_pick": "b7c2843bf985e122861e541b0baa42d3fdf399eb",
           "patch_id": "147a9423692f3d691eb4f1d16f827ec56aeae03a",
           "metadata_sha256": "f4baae9dfbd9bde215424e787a3e789c4b474eb302a1cdeb808c9792d3def9d5",
           "metadata_preserved": true
         },
         {
           "original": "8ee8b9cbc8446d8c64ff52113d02b3f7e2be0061",
-          "cherry_pick": "4058e9c1797bb84e06846ade2363d8a57b92a9a4",
+          "cherry_pick": "278cbf6e31a11060b4901a1d7ac760267a9561f0",
           "patch_id": "8921cdb1b28f58c7349a2d733a1dbb946158d988",
           "metadata_sha256": "da809dfa2ac0226cdfadd7ad3b66f283acfb6ea20f523e0e8bd41a60012e3b64",
           "metadata_preserved": true
         },
         {
           "original": "7fcc66c3b88fd697482d6d67b1ae7551c513bc89",
-          "cherry_pick": "7567d9fa5a9b8c20eacb3917f4f9d5a8b094ce93",
+          "cherry_pick": "658e771e9d32cd5550cf634cd25c93fba8489897",
           "patch_id": "ec7a7640fc1a8b7710dc70f7798d76d4cb6b902a",
           "metadata_sha256": "f519c13994216f157951465caa82a70c531aaed999efe89ab218101a21b8cba1",
           "metadata_preserved": true
         },
         {
           "original": "a7f3056184247f1aabb849a6456d575c7f064b1f",
-          "cherry_pick": "dbd355488fb717692af08dc6345b7b1a957d5017",
+          "cherry_pick": "069e750bd5f2e779b40fa655fa4f60eccb0eed51",
           "patch_id": "f693d0c6c998bedae0c658eabefd2018f0b7e801",
           "metadata_sha256": "71b1561ffaf58539a6bf2fb831704c59b3884b4ee870a008570371c0e3360848",
           "metadata_preserved": true
         },
         {
           "original": "98c704bd6f8f52b9e7b4583361b09d097aad1dab",
-          "cherry_pick": "5652f3d0838458033acadf42ceea1effd6fd0b22",
+          "cherry_pick": "50bdf9fb1733bffb6216864e80b352ff56c49791",
           "patch_id": "f03947d8ca1bd422836c33aab93ca639bd81033f",
           "metadata_sha256": "fabd223fa8cf6d4ccee4942cb9a8cdee046f53484e43258287f81dfccdfd55a3",
           "metadata_preserved": true
         },
         {
           "original": "d30d0f363ca11abba42ebd71a92eabc7b34bd62b",
-          "cherry_pick": "9c03cb78e245107a99193d5a9b74cc156c75bd26",
+          "cherry_pick": "b6d5bb36e371db558db2d296e2ffafdd611312c7",
           "patch_id": "7f9d109374efe42b33583dbf8f3465359a4242af",
           "metadata_sha256": "c466b929b729840b451861150b7a07e3f4bb3e280face5d80fb546ea0060f282",
           "metadata_preserved": true
         }
       ],
-      "backup_branch": "backup/sync-dev-weekly-20261109-resumed-20261111-android"
+      "backup_branch": "backup/sync-dev-weekly-20261116-android"
     },
     "main": {
       "branch": "main",
       "skip": false,
-      "upstream_sha": "a9e27320e8bfda5bdeb586ca3e4e55c3b051b98c",
-      "previous_head": "f87c2ebdb7e34754be751bb5e58926db2fed8f8c",
-      "source_sha": "a9e27320e8bfda5bdeb586ca3e4e55c3b051b98c",
-      "source_tree": "274291b16505ddb82184151fc141eda47ded90ba",
-      "source_fingerprint": "01a7e248b2bc2821538ceb319519e64b263adb86023bb94b38a99c0e92cab0aa",
+      "upstream_sha": "e82e4deac43da78b42b8fdb722176290cf738fb2",
+      "previous_head": "a9e27320e8bfda5bdeb586ca3e4e55c3b051b98c",
+      "source_sha": "e82e4deac43da78b42b8fdb722176290cf738fb2",
+      "source_tree": "79bb3adbf109cd7502129e4450adfcbd2c044d31",
+      "source_fingerprint": "8cdc9f980789ba28e0dcc58bab384a9b5a47dfab1b95708253e0f0edcdcce413",
       "replay_commits": [],
       "mapping": [],
-      "backup_branch": "backup/sync-main-weekly-20261109-resumed-20261111-android"
+      "backup_branch": "backup/sync-main-weekly-20261116-android"
     },
     "stable": {
       "branch": "stable",
