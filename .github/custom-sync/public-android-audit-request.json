@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "request_id": "weekly-20261109-resumed-android-alpha13c3-public-bytes",
-  "tag": "v1.15.0-alpha.13.c3",
-  "source_sha": "9c03cb78e245107a99193d5a9b74cc156c75bd26",
-  "source_tree": "1b405f031cb00557d0001a4c47018734b0b143a9",
-  "core_sha": "5978fa9253bb176be73d38d6b4411b3070dd7fed",
-  "version_code": 750,
+  "request_id": "weekly-20261116-android-alpha13c4-public-bytes",
+  "tag": "v1.15.0-alpha.13.c4",
+  "source_sha": "b6d5bb36e371db558db2d296e2ffafdd611312c7",
+  "source_tree": "763dc27db4a7e9b1b678baf1a4096ac29af12a0c",
+  "core_sha": "2decde7ac010271d216a7ba452080f78b2b44d7c",
+  "version_code": 751,
   "certificate_sha256": "fba2a95f3dff8c2bcb729f9b13e294c7f337b394cc3b9266e901ca49f8a363ac"
 }
